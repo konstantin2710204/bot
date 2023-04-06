@@ -1,5 +1,10 @@
-import telebot as telebot
-from telebot import types
+from aiogram import types
+from aiogram.dispatcher import FSMContext
+
+from loader import dp
+from loader import bot, storage
+
+from states.states import BotStates
 import copy
 import sqlite3
 import hashlib
@@ -13,9 +18,7 @@ from loguru import logger
 from replaces import model, printers, parsers, network
 from replaces.printers import printer
 
-bot = telebot.TeleBot('1331385164:AAG0MC2MxmBh8y-qAO_cqhqorCj_WyQraa8')
-
-DB_PATH = 'replaces_db.db'
+DB_PATH = '../../replaces_db.db'
 SCHEMA = """
 CREATE TABLE if not exists cache (key text primary key , value text);
 CREATE TABLE if not exists replaces_history (got_timestamp text, content blob, content_hash text);
@@ -214,11 +217,11 @@ def main():
 
 
 
-@bot.message_handler(commands=['start'])
+@dp.message_handler(commands=['start'])
 def start(message):
     bot.send_message(message.chat.id, 'Я на связи👋. Напиши мне что-нибудь. 🤖 /help')
 
-@bot.message_handler(commands=["help"])
+@dp.message_handler(commands=["help"])
 def help(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     qu = types.KeyboardButton('привет👋')
@@ -231,20 +234,36 @@ def help(message):
     markup.add(qu,dela,otvet,urk,zmn)
     bot.send_message(message.chat.id, "зачем❓", reply_markup=markup )
 
-@bot.message_handler(content_types=["text"])
-def get_user_text(message):
+@dp.message_handler(content_types=["text"])
+async def get_user_text(message: types.Message):
     if message.text == 'привет👋':
-        bot.send_message(message.chat.id, "привет👋" )
-    elif message.text =="как дела❓":
-        bot.send_message(message.chat.id,"норм,ты как?🤗")
+        await message.answer("привет👋")
+    elif message.text == "как дела❓":
+        await message.answer("норм,ты как?🤗")
     elif message.text == "норм,ты как?🤗":
-        bot.send_message(message.chat.id, "понятно😋")
-    elif message.text == "замены🏫":
-        replaces = get_replaces()
-        bot.send_message(message.chat.id, replaces)
-    else:
-        bot.send_message(message.chat.id,'я тебя не понимаю')
-@bot.message_handler(content_types=["sticker"])
+        await message.answer("понятно😋")
+    elif message.text == 'замены🏫':
+        await message.answer('укажи номер группы')
+        await BotStates.Q1.set()
+
+@dp.message_handler(state=BotStates.Q1)
+async def answer_q1(message: types.Message, state: FSMContext):
+    answer = message.text
+
+    await state.update_data(answer1=answer)
+
+    await state.update_data(
+        {"answer1": answer}
+    )
+
+    async with state.proxy() as data:
+        data["answer1"] = answer
+
+    await message.answer(get_replaces(num=int(answer)))
+
+    await state.finish()
+
+@dp.message_handler(content_types=["sticker"], state=None)
 def sticker(message):
         bot.send_message(message.chat.id,"классный стикер")
 
@@ -290,5 +309,11 @@ def get_replaces(num: int = 304) -> str:
 
         # store replaces to db anyway
         replaces_db.store_replaces(replaces_page, replaces_hash)
+
+async def on_shutdown(dp):
+    await bot.close()
+    await storage.close()
+
 if __name__ == '__main__':
-    bot.polling(none_stop=True)
+    from aiogram import executor
+    executor.start_polling(dp, on_shutdown=on_shutdown)
