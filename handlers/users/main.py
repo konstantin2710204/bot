@@ -237,20 +237,27 @@ async def get_user_text(message: types.Message):
 
 @dp.message_handler(state=BotStates.Q1)
 async def answer_q1(message: types.Message, state: FSMContext):
-    answer = message.text
+    try:
+        answer = int(message.text)
 
-    await state.update_data(answer1=answer)
+    except ValueError:
+        await message.answer("напиши число")
+        return
 
-    await state.update_data(
-        {"answer1": answer}
-    )
+    else:
 
-    async with state.proxy() as data:
-        data["answer1"] = answer
+        await state.update_data(answer1=answer)
 
-    await message.answer(get_replaces(num=int(answer)))
+        await state.update_data(
+            {"answer1": answer}
+        )
 
-    await state.finish()
+        async with state.proxy() as data:
+            data["answer1"] = answer
+
+        await message.answer(get_replaces(num=int(answer)))
+
+        await state.finish()
 
 @dp.message_handler(content_types=["sticker"], state=None)
 def sticker(message):
