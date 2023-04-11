@@ -218,31 +218,20 @@ def main():
 
 
 @dp.message_handler(commands=['start'])
-def start(message):
-    bot.send_message(message.chat.id, 'Я на связи👋. Напиши мне что-нибудь. 🤖 /help')
+async def start(message):
+    kb = [[types.KeyboardButton(text="замены")]]
+    keybord = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer('Я на связи👋. Пиши', reply_markup=keybord)
 
-@dp.message_handler(commands=["help"])
-def help(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    qu = types.KeyboardButton('привет👋')
-    dela = types.KeyboardButton('как дела❓')
-    otvet = types.KeyboardButton('норм,ты как?🤗')
-    urk = types.KeyboardButton('уроки📕')
-    zmn = types.KeyboardButton('замены🏫')
-
-
-    markup.add(qu,dela,otvet,urk,zmn)
-    bot.send_message(message.chat.id, "зачем❓", reply_markup=markup )
+@dp.message_handler(commands=['help'])
+async def help(message):
+    kb = [[types.KeyboardButton(text="замены")]]
+    keybord = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer('У меня пока есть только одна команда "замены"')
 
 @dp.message_handler(content_types=["text"])
 async def get_user_text(message: types.Message):
-    if message.text == 'привет👋':
-        await message.answer("привет👋")
-    elif message.text == "как дела❓":
-        await message.answer("норм,ты как?🤗")
-    elif message.text == "норм,ты как?🤗":
-        await message.answer("понятно😋")
-    elif message.text == 'замены🏫':
+    if message.text == 'замены':
         await message.answer('укажи номер группы')
         await BotStates.Q1.set()
 
